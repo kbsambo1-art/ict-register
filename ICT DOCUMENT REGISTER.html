@@ -1,0 +1,2678 @@
+<!DOCTYPE html>
+<!-- ========================================================= -->
+<!-- SECTION 1 : HEAD                                          -->
+<!-- ========================================================= -->
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ICT Register v3.6</title>
+
+    <!-- ----- CUSTOM FAVICON ----- -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b6e4f'/%3E%3Cpath d='M18 32 L28 42 L48 22' stroke='white' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" type="image/svg+xml">
+
+    <!-- ----- APPLE TOUCH ICON ----- -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='30' fill='%230b6e4f'/%3E%3Cpath d='M50 90 L80 120 L135 60' stroke='white' stroke-width='14' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ICT Register">
+    <meta name="theme-color" content="#0b6e4f">
+
+    <!-- ----- PWA MANIFEST ----- -->
+    <link id="pwa-manifest" rel="manifest">
+
+    <!-- ----- SUPABASE JS CLIENT ----- -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+    <!-- ========================================================= -->
+    <!-- SECTION 2 : STYLESHEET                                   -->
+    <!-- ========================================================= -->
+    <style>
+        * { box-sizing: border-box; margin: 0; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f0f4f8;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ========== LOADING SCREEN ========== */
+        #loadingScreen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0a5e44, #0b6e4f, #118a62);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            transition: opacity 0.5s ease;
+        }
+        #loadingScreen.hidden { opacity: 0; pointer-events: none; }
+        .loader {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ========== LOGIN OVERLAY ========== */
+        #authOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0a5e44, #0b6e4f, #118a62);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+        }
+        #authOverlay.hidden { opacity: 0; pointer-events: none; }
+        .auth-box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 32px 35px 26px;
+            width: 400px;
+            max-width: 94%;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        .auth-logo { margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; user-select: none; }
+        .auth-logo img { max-width: 110px; height: auto; }
+        .auth-box h2 { color: #0b6e4f; font-size: 20px; margin-bottom: 2px; font-weight: 700; }
+        .auth-box .sub { color: #999; font-size: 12px; margin-bottom: 18px; font-weight: 500; letter-spacing: 1px; }
+        .auth-box .field { margin-bottom: 12px; text-align: left; }
+        .auth-box .field label { display: block; font-weight: 600; font-size: 12px; color: #333; margin-bottom: 3px; }
+        .auth-box .field input {
+            width: 100%; padding: 10px 14px;
+            border: 2px solid #e8edf0; border-radius: 8px;
+            font-size: 14px; background: #f8fafc; transition: .2s;
+        }
+        .auth-box .field input:focus {
+            border-color: #0b6e4f; outline: none;
+            box-shadow: 0 0 0 4px rgba(11, 110, 79, .12); background: #fff;
+        }
+        .auth-box .btn-primary {
+            background: linear-gradient(135deg, #0b6e4f, #118a62);
+            color: #fff; border: none; padding: 11px 20px;
+            border-radius: 8px; font-size: 14px; font-weight: 600;
+            cursor: pointer; width: 100%; transition: .2s;
+        }
+        .auth-box .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(11, 110, 79, 0.35);
+        }
+        .auth-box .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .auth-box .error-msg { color: #d32f2f; font-size: 12px; margin: 4px 0 10px; min-height: 18px; font-weight: 500; }
+        .auth-box .footer-note {
+            font-size: 10px; color: #bbb; margin-top: 14px;
+            border-top: 1px solid #eee; padding-top: 10px; letter-spacing: 1px;
+        }
+
+        /* ========== MAIN APP ========== */
+        #appContainer { display: none; height: 100vh; overflow-y: auto; }
+        #appContainer.visible { display: block; }
+
+        header {
+            background: linear-gradient(135deg, #0b6e4f, #118a62);
+            color: #fff; padding: 8px 22px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, .2);
+            display: flex; justify-content: space-between;
+            align-items: center; flex-wrap: wrap;
+        }
+        header .center { flex: 2; text-align: center; }
+        header .right { flex: 1; text-align: right; display: flex; justify-content: flex-end; }
+        header h1 { margin: 0; font-size: 20px; }
+        header .subtitle { font-size: 11px; opacity: .85; margin-top: 1px; }
+
+        .user-info {
+            font-size: 13px; display: flex; align-items: center;
+            gap: 12px; flex-wrap: wrap; justify-content: flex-end;
+        }
+        .user-info .username { font-weight: 600; }
+        .session-timer {
+            font-size: 12px; background: rgba(255, 255, 255, 0.15);
+            padding: 4px 12px; border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex; align-items: center; gap: 6px;
+            font-variant-numeric: tabular-nums;
+            min-width: 80px; justify-content: center;
+        }
+        .session-timer.warning {
+            background: rgba(255, 200, 0, 0.25);
+            border-color: rgba(255, 200, 0, 0.5);
+            animation: pulse-timer 1s infinite;
+        }
+        @keyframes pulse-timer { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+        .install-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: #fff; padding: 5px 14px; border-radius: 6px;
+            cursor: pointer; font-size: 12px; font-weight: 700;
+            transition: .2s; white-space: nowrap;
+            display: none; align-items: center; gap: 5px;
+            animation: pulse-install 2s infinite;
+        }
+        .install-btn.visible { display: inline-flex; }
+        .install-btn:hover { background: rgba(255, 255, 255, 0.35); transform: translateY(-1px); }
+        @keyframes pulse-install {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5); }
+            50% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
+        }
+
+        .nav-tabs { display: flex; gap: 4px; align-items: center; }
+        .nav-tab {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff; padding: 5px 14px; border-radius: 6px;
+            cursor: pointer; font-size: 12px; font-weight: 600;
+            transition: .2s; white-space: nowrap;
+        }
+        .nav-tab:hover { background: rgba(255, 255, 255, 0.2); }
+        .nav-tab.active { background: #fff; color: #0b6e4f; border-color: #fff; }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #fff; padding: 5px 14px; border-radius: 6px;
+            cursor: pointer; font-size: 12px; font-weight: 600;
+            transition: .2s; white-space: nowrap;
+        }
+        .logout-btn:hover { background: rgba(255, 255, 255, 0.3); }
+
+        @media (max-width: 700px) {
+            header { flex-direction: column; gap: 6px; padding: 8px 12px; }
+            header .center, header .right { flex: 1; text-align: center; width: 100%; }
+            .user-info { justify-content: center; }
+            .right { justify-content: center !important; }
+            .session-timer { font-size: 11px; padding: 3px 10px; }
+        }
+
+        .wrap { max-width: 1200px; margin: 16px auto; padding: 0 15px; }
+
+        /* STATS */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px; margin-bottom: 16px;
+        }
+        .stat {
+            background: #fff; border-radius: 10px;
+            padding: 12px 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+            transition: transform .2s, box-shadow .2s; cursor: pointer;
+        }
+        .stat:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0, 0, 0, .12); }
+        .stat small {
+            display: block; font-size: 12px; color: #555;
+            font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+        }
+        .stat h2 { margin: 2px 0 0; font-size: 28px; font-weight: 700; }
+        .stat-pending { border-left: 6px solid #1565C0; }
+        .stat-pending h2 { color: #1565C0; }
+        .stat-processing { border-left: 6px solid #FB8C00; }
+        .stat-processing h2 { color: #FB8C00; }
+        .stat-processed { border-left: 6px solid #2E7D32; }
+        .stat-processed h2 { color: #2E7D32; }
+        .stat-total { border-left: 6px solid #0b6e4f; }
+        .stat-total h2 { color: #0b6e4f; }
+
+        .card {
+            background: #fff; border-radius: 12px;
+            padding: 18px 22px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, .06);
+            margin-top: 16px;
+        }
+        .card h3 { margin-top: 0; color: #0b6e4f; font-size: 18px; }
+        .card .card-sub { color: #777; font-size: 13px; margin-bottom: 12px; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        label { font-weight: 600; display: block; margin-bottom: 3px; font-size: 13px; color: #333; }
+        input, select, textarea {
+            width: 100%; padding: 8px 10px;
+            border: 1px solid #e0e7ec; border-radius: 8px;
+            font-size: 13px; background: #fafcfd;
+            transition: .2s; font-family: inherit;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: #0b6e4f; outline: none;
+            box-shadow: 0 0 0 3px rgba(11, 110, 79, .12); background: #fff;
+        }
+        textarea { height: 50px; resize: vertical; }
+        .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+        button {
+            background: #0b6e4f; color: #fff; border: none;
+            padding: 9px 18px; border-radius: 8px;
+            cursor: pointer; font-size: 13px; font-weight: 600;
+            transition: .2s; display: inline-flex; align-items: center;
+            gap: 5px; font-family: inherit;
+        }
+        button:hover:not(:disabled) {
+            background: #09553d; transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(11, 110, 79, .3);
+        }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        button.report-btn { background: #673ab7; }
+        button.report-btn:hover { background: #512da8; }
+        button.excel-btn { background: #2e7d32; }
+        button.excel-btn:hover { background: #1b5e20; }
+        button.danger { background: #b71c1c; }
+        button.danger:hover { background: #880e0e; }
+        button.secondary { background: #607d8b; }
+        button.secondary:hover { background: #455a64; }
+
+        /* FILTER BAR */
+        .filter-bar {
+            background: #f7fbf9;
+            border: 1px solid #e0eee8;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            display: flex; flex-wrap: wrap;
+            gap: 8px; align-items: flex-end;
+        }
+        .filter-bar .filter-group {
+            display: flex; flex-direction: column;
+            min-width: 120px; flex: 1 1 120px;
+        }
+        .filter-bar .filter-group label {
+            font-size: 10px; font-weight: 700; color: #0b6e4f;
+            text-transform: uppercase; letter-spacing: .4px; margin-bottom: 3px;
+        }
+        .filter-bar .filter-group input,
+        .filter-bar .filter-group select { padding: 6px 8px; font-size: 12px; }
+        .filter-bar .filter-actions {
+            display: flex; gap: 6px; align-items: flex-end; flex: 0 0 auto;
+        }
+        .filter-bar .filter-actions button {
+            padding: 6px 10px; font-size: 11px;
+        }
+        .filter-chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #0b6e4f; color: #fff;
+            padding: 3px 10px; border-radius: 20px;
+            font-size: 11px; font-weight: 600; margin: 4px 4px 0 0;
+        }
+        .filter-chip button {
+            background: rgba(255,255,255,0.25); border: none;
+            color: #fff; padding: 0 5px; border-radius: 50%;
+            cursor: pointer; font-size: 11px; line-height: 1.2;
+        }
+        .filter-chip button:hover { background: rgba(255,255,255,0.4); }
+        .filter-chip.office-chip { background: #673ab7; }
+
+        /* Report dialog */
+        .report-dialog {
+            background: #fff;
+            width: 640px;
+            max-width: 94%;
+            padding: 22px 26px 20px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+            text-align: center;
+            animation: modalIn .3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .report-dialog h2 {
+            color: #0b6e4f;
+            margin: 0 0 4px 0;
+            font-size: 17px;
+        }
+        .report-dialog .dialog-sub {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 12px;
+        }
+        .report-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #0b6e4f;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            text-align: left;
+            margin-bottom: 4px;
+        }
+        .report-dialog .report-filter-info {
+            background: #f7fbf9;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #555;
+            margin-bottom: 12px;
+            text-align: left;
+            border-left: 3px solid #0b6e4f;
+        }
+        .report-dialog .report-action-btn {
+            width: 100%;
+            margin: 5px 0;
+            justify-content: center;
+            padding: 10px 18px;
+            font-size: 13px;
+        }
+
+        .table-wrap { overflow-x: auto; margin-top: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eef3f7;
+            text-align: left; vertical-align: middle;
+        }
+        th {
+            background: #0b6e4f; color: #fff;
+            position: sticky; top: 0; white-space: nowrap; font-weight: 600;
+        }
+        tr:hover { background: #f7fbf9; }
+        .search {
+            margin-bottom: 10px; padding: 8px 12px;
+            border: 1px solid #e0e7ec; border-radius: 8px;
+            width: 100%; max-width: 380px; font-size: 13px; background: #fafcfd;
+        }
+        .search:focus {
+            border-color: #0b6e4f; outline: none;
+            box-shadow: 0 0 0 3px rgba(11, 110, 79, .12);
+        }
+
+        .badge {
+            display: inline-block; padding: 3px 12px;
+            border-radius: 30px; font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .3px; color: #fff;
+        }
+        .badge-pending { background: #1565C0; }
+        .badge-processing { background: #FB8C00; }
+        .badge-processed { background: #2E7D32; }
+        .badge-returned { background: #6A1B9A; margin-left: 4px; font-size: 10px; }
+
+        .action-btn {
+            padding: 3px 8px; margin: 1px; border: none;
+            border-radius: 4px; cursor: pointer; font-size: 11px;
+            font-weight: 600; display: inline-flex; align-items: center;
+            gap: 3px; transition: .2s; white-space: nowrap;
+        }
+        .action-btn:hover { transform: scale(1.03); }
+        .action-btn .icon { font-size: 12px; }
+        .edit-btn { background: #1976d2; color: #fff; }
+        .edit-btn:hover { background: #125ea8; }
+        .delete-btn { background: #d32f2f; color: #fff; }
+        .delete-btn:hover { background: #b71c1c; }
+        .call-btn { background: #f57c00; color: #fff; }
+        .call-btn:hover { background: #e65100; }
+        .history-btn { background: #6A1B9A; color: #fff; }
+        .history-btn:hover { background: #4A148C; }
+
+        .action-cell { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; }
+        @media (max-width: 600px) {
+            .action-cell { flex-direction: column; align-items: stretch; }
+            .action-btn { justify-content: center; padding: 4px 6px; font-size: 10px; }
+        }
+
+        .modal-overlay {
+            display: none; position: fixed;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5); z-index: 1000;
+            justify-content: center; align-items: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: #fff; border-radius: 16px;
+            padding: 24px 28px; width: 520px; max-width: 94%;
+            max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+            text-align: left; animation: modalIn .3s ease;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .modal-box h2 {
+            color: #0b6e4f; margin-top: 0; font-size: 18px;
+            text-align: center; border-bottom: 2px solid #eef3f7;
+            padding-bottom: 8px; display: flex;
+            align-items: center; justify-content: center; gap: 8px;
+        }
+        .modal-box .close-modal {
+            float: right; background: transparent; border: none;
+            font-size: 24px; cursor: pointer; color: #999;
+            line-height: 1; transition: .2s;
+        }
+        .modal-box .close-modal:hover { color: #333; transform: rotate(90deg); }
+        .modal-box label { font-weight: 600; font-size: 13px; display: block; margin: 8px 0 3px; }
+        .modal-box input, .modal-box select, .modal-box textarea {
+            width: 100%; padding: 8px 10px;
+            border: 1px solid #e0e7ec; border-radius: 8px;
+            font-size: 13px; background: #fafcfd; font-family: inherit;
+        }
+        .modal-box input:focus, .modal-box select:focus, .modal-box textarea:focus {
+            border-color: #0b6e4f; outline: none;
+            box-shadow: 0 0 0 3px rgba(11, 110, 79, .12);
+        }
+        .modal-box .btn-primary {
+            background: linear-gradient(135deg, #0b6e4f, #118a62);
+            color: #fff; border: none; padding: 10px 20px;
+            border-radius: 8px; cursor: pointer;
+            font-size: 14px; font-weight: 600; width: 100%;
+            margin-top: 12px; transition: .2s;
+        }
+        .modal-box .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(11, 110, 79, .3);
+        }
+        .modal-box .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .return-notice {
+            background: linear-gradient(135deg, #f3e5f5, #ede7f6);
+            border: 1px solid #ce93d8;
+            border-left: 5px solid #6A1B9A;
+            border-radius: 8px; padding: 12px 16px;
+            margin-bottom: 12px; display: flex;
+            align-items: center; gap: 12px;
+            animation: slideDown 0.4s ease;
+        }
+        .return-notice .icon { font-size: 28px; }
+        .return-notice .text { flex: 1; font-size: 13px; color: #4A148C; }
+        .return-notice .text strong {
+            display: block; font-size: 14px;
+            margin-bottom: 2px; color: #6A1B9A;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .history-item {
+            border-bottom: 1px solid #f0f5f8;
+            padding: 8px; font-size: 13px;
+            border-radius: 6px; transition: background .2s;
+        }
+        .history-item:hover { background: #f7fbf9; }
+        .history-item .time { color: #888; font-size: 11px; font-weight: 500; }
+        .history-item .action-badge {
+            display: inline-block; padding: 1px 10px;
+            border-radius: 12px; font-size: 11px;
+            font-weight: 700; color: #fff; margin-right: 6px;
+        }
+        .action-received { background: #1565C0; }
+        .action-assigned { background: #f57c00; }
+        .action-sentback { background: #6A1B9A; }
+        .action-reassigned { background: #00897B; }
+        .action-sent { background: #2E7D32; }
+        .action-sendto { background: #2E7D32; }
+        .action-recalled { background: #6A1B9A; }
+
+        .doc-info {
+            background: #f7fbf9; padding: 10px 14px;
+            border-radius: 8px; margin-bottom: 12px;
+            font-size: 13px; border-left: 4px solid #0b6e4f;
+        }
+        .doc-info strong { color: #0b6e4f; }
+        .info-hint {
+            font-size: 12px; color: #777;
+            background: #f0f6fa; padding: 6px 12px;
+            border-radius: 6px; margin-top: -4px;
+            margin-bottom: 8px; text-align: center;
+        }
+        .info-hint.return-hint {
+            background: #f3e5f5; color: #6A1B9A;
+            font-weight: 600; border: 1px solid #ce93d8;
+        }
+        .audit-info { font-size: 11px; color: #888; margin-top: 4px; font-style: italic; }
+
+        #reportBox {
+            display: none; position: fixed;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, .5); z-index: 999;
+            justify-content: center; align-items: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .table-info {
+            font-size: 12px; color: #555;
+            margin-bottom: 6px; padding: 5px 10px;
+            background: #f0f6fa; border-radius: 6px;
+        }
+        .table-info strong { color: #0b6e4f; }
+
+        .pagination {
+            display: flex; align-items: center;
+            justify-content: center; gap: 6px;
+            margin-top: 12px; flex-wrap: wrap;
+        }
+        .pagination button {
+            padding: 4px 12px; border: 1px solid #cfd8dc;
+            border-radius: 6px; background: #fff; cursor: pointer;
+            font-size: 13px; font-weight: 600;
+            transition: .2s; color: #333;
+            min-width: 36px; text-align: center;
+        }
+        .pagination button:hover:not(:disabled) {
+            background: #0b6e4f; color: #fff; border-color: #0b6e4f;
+        }
+        .pagination button.active {
+            background: #0b6e4f; color: #fff;
+            border-color: #0b6e4f; cursor: default;
+        }
+        .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .pagination button:disabled:hover { background: #fff; color: #333; border-color: #cfd8dc; }
+
+        #userManagementContent { display: none; }
+        .user-list { margin-top: 10px; }
+        .user-list table { font-size: 12px; }
+        .user-list th { background: #455a64; }
+        .user-list td { padding: 6px 10px; }
+        .badge-admin { background: #f57c00; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; }
+        .badge-user { background: #78909c; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; }
+        .success-msg { color: #2e7d32; font-size: 13px; margin: 8px 0 12px; min-height: 18px; font-weight: 500; }
+        .error-msg { color: #d32f2f; font-size: 13px; margin: 8px 0 12px; min-height: 18px; font-weight: 500; }
+
+        .sync-indicator {
+            position: fixed; bottom: 20px; right: 20px;
+            background: #fff; border-radius: 30px;
+            padding: 6px 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 12px; font-weight: 600;
+            color: #0b6e4f; display: flex;
+            align-items: center; gap: 6px;
+            z-index: 500; transition: .3s;
+        }
+        .sync-indicator.offline { color: #d32f2f; }
+        .sync-indicator.syncing { color: #FB8C00; }
+        .sync-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%; background: currentColor;
+            animation: pulse-dot 1.5s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        #installBanner {
+            display: none; position: fixed;
+            bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            background: #fff; border-radius: 12px;
+            padding: 14px 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            z-index: 800; align-items: center;
+            gap: 14px; border-left: 4px solid #0b6e4f;
+            max-width: 92%; animation: slideUp 0.5s ease;
+        }
+        #installBanner.visible { display: flex; }
+        #installBanner .install-icon { font-size: 32px; }
+        #installBanner .install-text { font-size: 13px; color: #333; line-height: 1.4; }
+        #installBanner .install-text strong { color: #0b6e4f; display: block; margin-bottom: 2px; }
+        #installBanner button { padding: 8px 18px; font-size: 13px; white-space: nowrap; }
+        #installBanner .close-install {
+            background: transparent; color: #999;
+            padding: 4px; font-size: 20px; line-height: 1;
+        }
+        #installBanner .close-install:hover {
+            color: #333; background: transparent;
+            box-shadow: none; transform: none;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(30px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        @media (max-width: 600px) {
+            #installBanner {
+                flex-direction: column; text-align: center;
+                left: 12px; right: 12px;
+                transform: none; max-width: none;
+            }
+            #installBanner .install-text { text-align: center; }
+        }
+
+        #iosInstallModal {
+            display: none; position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); z-index: 2000;
+            justify-content: center; align-items: center;
+            backdrop-filter: blur(4px); padding: 20px;
+        }
+        #iosInstallModal.active { display: flex; }
+        #iosInstallModal .ios-box {
+            background: #fff; border-radius: 16px;
+            padding: 28px 26px 22px; max-width: 420px;
+            width: 100%; text-align: center;
+            animation: modalIn .3s ease;
+        }
+        #iosInstallModal h2 { color: #0b6e4f; margin: 0 0 10px; font-size: 18px; }
+        #iosInstallModal .step {
+            text-align: left; background: #f7fbf9;
+            padding: 10px 14px; border-radius: 8px;
+            margin: 8px 0; font-size: 13px; color: #333;
+            border-left: 3px solid #0b6e4f;
+        }
+        #iosInstallModal .step strong { color: #0b6e4f; }
+        #iosInstallModal button { margin-top: 12px; width: 100%; }
+
+        @media (max-width: 600px) {
+            .stats { grid-template-columns: 1fr 1fr; }
+            .grid { grid-template-columns: 1fr; }
+            .card { padding: 12px 14px; }
+            .btns button { flex: 1 1 100%; }
+            .report-dialog { padding: 18px; width: 94%; }
+            .auth-box { padding: 22px 18px 18px; width: 94%; }
+            .auth-logo img { max-width: 90px; }
+            .auth-box h2 { font-size: 16px; }
+            .modal-box { padding: 18px; }
+            .modal-box h2 { font-size: 16px; }
+            .sync-indicator { bottom: 12px; right: 12px; font-size: 11px; padding: 5px 10px; }
+            .filter-bar { padding: 8px 10px; }
+            .filter-bar .filter-group { min-width: 100%; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ========================================================= -->
+    <!-- SECTION 3 : LOADING SCREEN                               -->
+    <!-- ========================================================= -->
+    <div id="loadingScreen">
+        <div class="loader"></div>
+        <div>Loading ICT Register...</div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- SECTION 4 : LOGIN OVERLAY                                -->
+    <!-- ========================================================= -->
+    <div id="authOverlay" class="hidden">
+        <div class="auth-box">
+            <div class="auth-logo">
+                <img src="logo.png" alt="CAC Logo" onerror="this.style.display='none'">
+            </div>
+            <h2>ICT Document Register</h2>
+            <div class="sub">Incoming &amp; Outgoing Tracker</div>
+            <div id="loginForm">
+                <div class="field">
+                    <label>📧 Email</label>
+                    <input type="email" id="loginEmail" placeholder="Enter your email" autocomplete="email">
+                </div>
+                <div class="field">
+                    <label>🔒 Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter') handleLogin()">
+                </div>
+                <div id="loginError" class="error-msg"></div>
+                <button class="btn-primary" id="loginBtn" onclick="handleLogin()">🔑 Sign In</button>
+                <div class="footer-note">ICT Office Document Register v3.6 (Cloud)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- SECTION 5 : MAIN APPLICATION                             -->
+    <!-- ========================================================= -->
+    <div id="appContainer">
+
+        <header>
+            <div class="center">
+                <h1>📂 ICT OFFICE DOCUMENT REGISTER</h1>
+                <div class="subtitle">Incoming &amp; Outgoing Document Tracker</div>
+            </div>
+            <div class="right">
+                <div class="user-info">
+                    <span>👋 <span class="username" id="currentUserDisplay">User</span></span>
+                    <span class="session-timer" id="sessionTimer">⏱ 5:00</span>
+                    <button class="install-btn" id="installBtnHeader" onclick="triggerInstall()" title="Install this app on your device">
+                        📲 Install App
+                    </button>
+                    <div class="nav-tabs">
+                        <button class="nav-tab active" id="dashboardTab" onclick="switchTab('dashboard')">📊 Dashboard</button>
+                        <button class="nav-tab" id="userManagementTab" onclick="switchTab('users')" style="display:none;">👥 Users</button>
+                    </div>
+                    <button class="logout-btn" onclick="handleLogout()">🚪 Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="wrap">
+
+            <!-- ===== DASHBOARD CONTENT ===== -->
+            <div id="dashboardContent" class="tab-content">
+                <div class="stats">
+                    <div class="stat stat-pending" onclick="filterByStatus('Pending')">
+                        <small>⏳ Pending</small>
+                        <h2 id="statPending">0</h2>
+                    </div>
+                    <div class="stat stat-processing" onclick="filterByStatus('Processing')">
+                        <small>⚙️ Processing</small>
+                        <h2 id="statProcessing">0</h2>
+                    </div>
+                    <div class="stat stat-processed" onclick="filterByStatus('Processed')">
+                        <small>✅ Processed</small>
+                        <h2 id="statProcessed">0</h2>
+                    </div>
+                    <div class="stat stat-total" onclick="filterByStatus('all')">
+                        <small>📄 Total</small>
+                        <h2 id="statTotal">0</h2>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>✏️ Document Entry</h3>
+                    <form id="docForm">
+                        <div class="grid">
+                            <div>
+                                <label>Subject</label>
+                                <input type="text" id="docSubject" placeholder="Subject of document" required>
+                            </div>
+                            <div>
+                                <label>Within ICT?</label>
+                                <select id="docWithinICT">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                            </div>
+                            <div id="receivedSection">
+                                <label>Received From</label>
+                                <span id="receivedContainer">
+                                    <input type="text" id="docReceivedFrom" placeholder="Office / Person">
+                                </span>
+                            </div>
+                            <div>
+                                <label>Date</label>
+                                <input type="date" id="docDate" required>
+                            </div>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <label>Remarks</label>
+                            <textarea id="docRemarks" placeholder="Additional notes..."></textarea>
+                        </div>
+                        <div class="btns">
+                            <button type="submit" id="saveBtn">💾 Save Record</button>
+                            <button type="button" class="report-btn" onclick="openReportMenu()">📊 Reports</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <input class="search" id="searchInput" placeholder="🔍 Search by subject, reference, from/to...">
+                    <div class="table-info" id="tableInfo">Showing <strong>0</strong> records</div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>S/N</th>
+                                    <th>Reference</th>
+                                    <th>Subject</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Date / Time</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="paginationControls">
+                        <button id="prevPage" onclick="changePage(-1)">‹ Prev</button>
+                        <span id="pageNumbers"></span>
+                        <button id="nextPage" onclick="changePage(1)">Next ›</button>
+                    </div>
+                    <div style="margin-top:6px;font-size:12px;color:#777;text-align:center;">
+                        <span id="rowCount">0</span> record(s) found
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== USER MANAGEMENT CONTENT ===== -->
+            <div id="userManagementContent" class="tab-content">
+                <div class="card">
+                    <h3>👥 User Management</h3>
+                    <div class="card-sub">
+                        To add a new officer, go to <strong>Supabase → Authentication → Users → Add User</strong>,
+                        then run an INSERT into <code>user_profiles</code> with their UID.
+                    </div>
+                    <div class="user-list">
+                        <h4 style="margin:14px 0 6px; font-size:14px; color:#333;">Registered Users (from Cloud)</h4>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr><th>Username</th><th>Role</th><th style="width:70px;">Action</th></tr>
+                                </thead>
+                                <tbody id="userListBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== REPORT DIALOG ===== -->
+            <div id="reportBox">
+                <div class="report-dialog">
+                    <h2>📊 ICT REPORT CENTRE</h2>
+                    <div class="dialog-sub">Apply filters below, then choose a report format.</div>
+
+                    <div class="report-section-title">🔽 Filter Documents</div>
+                    <div class="filter-bar">
+                        <div class="filter-group">
+                            <label>Quick Preset</label>
+                            <select id="datePreset" onchange="applyDatePreset()">
+                                <option value="all">All Time</option>
+                                <option value="today">Today</option>
+                                <option value="thisWeek">This Week</option>
+                                <option value="thisMonth">This Month</option>
+                                <option value="lastMonth">Last Month</option>
+                                <option value="thisQuarter">This Quarter</option>
+                                <option value="lastQuarter">Last Quarter</option>
+                                <option value="thisYear">This Year</option>
+                                <option value="custom">Custom Range...</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>From Date</label>
+                            <input type="date" id="filterFromDate">
+                        </div>
+                        <div class="filter-group">
+                            <label>To Date</label>
+                            <input type="date" id="filterToDate">
+                        </div>
+                        <div class="filter-group" style="min-width:200px;">
+                            <label>Office / Unit / Officer</label>
+                            <select id="officeFilter" onchange="applyOfficeFilter()">
+                                <option value="all">All Offices / Units / Officers</option>
+                            </select>
+                        </div>
+                        <div class="filter-actions">
+                            <button type="button" onclick="applyCustomDateFilter()" title="Apply the selected date range">✅ Apply</button>
+                            <button type="button" class="secondary" onclick="clearAllFilters()" title="Reset all filters">🔄 Reset</button>
+                        </div>
+                    </div>
+                    <div id="activeFilterChip" style="text-align:left;margin-bottom:6px;"></div>
+
+                    <div class="report-filter-info" id="reportFilterInfo">
+                        <strong>📅 Filter:</strong> All Time<br>
+                        <strong>🏢 Office:</strong> All Offices
+                    </div>
+
+                    <div class="report-section-title">📄 Choose Report Format</div>
+                    <button class="report-action-btn" onclick="generateReport()">📄 PDF Report</button>
+                    <button class="report-action-btn excel-btn" onclick="exportExcel()">📊 Excel Report (CSV)</button>
+                    <button class="report-action-btn danger" onclick="closeReportMenu()">Close</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Sync indicator -->
+    <div class="sync-indicator" id="syncIndicator" style="display:none;">
+        <div class="sync-dot"></div>
+        <span id="syncText">Cloud Connected</span>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- INSTALL PROMPT BANNER                                    -->
+    <!-- ========================================================= -->
+    <div id="installBanner">
+        <div class="install-icon">📲</div>
+        <div class="install-text">
+            <strong>Install ICT Register</strong>
+            Add to your home screen for instant access, even offline.
+        </div>
+        <button onclick="triggerInstall()">📥 Install</button>
+        <button class="close-install" onclick="dismissInstall()" title="Dismiss">×</button>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- iOS INSTALL INSTRUCTIONS MODAL                           -->
+    <!-- ========================================================= -->
+    <div id="iosInstallModal">
+        <div class="ios-box">
+            <h2>📲 Install on iPhone / iPad</h2>
+            <div class="step">
+                <strong>Step 1:</strong> Tap the <strong>Share</strong> button at the bottom of Safari <br>
+                (the square with an arrow pointing up 📤)
+            </div>
+            <div class="step">
+                <strong>Step 2:</strong> Scroll down and tap <strong>"Add to Home Screen"</strong>
+            </div>
+            <div class="step">
+                <strong>Step 3:</strong> Tap <strong>"Add"</strong> in the top-right corner
+            </div>
+            <div class="step" style="background:#fff8e1;border-left-color:#f57c00;">
+                💡 The ICT Register icon will appear on your home screen.
+            </div>
+            <button onclick="closeIOSModal()">Got it</button>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- SECTION 6 : MODALS                                       -->
+    <!-- ========================================================= -->
+
+    <!-- Call Document Modal -->
+    <div id="callModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeCallModal()">&times;</button>
+            <h2>📞 Call / Assign Document</h2>
+            <div class="doc-info">
+                <strong>Ref:</strong> <span id="callDocRef"></span><br>
+                <strong>Subject:</strong> <span id="callDocSubject"></span><br>
+                <strong>Current Location:</strong> <span id="callDocCurrentTo"></span>
+            </div>
+            <div id="returnNotice" class="return-notice" style="display:none;">
+                <div class="icon">🔄</div>
+                <div class="text">
+                    <strong id="returnNoticeTitle">Returning Document</strong>
+                    <span id="returnNoticeBody"></span>
+                </div>
+            </div>
+            <div id="callWithinICTContainer" class="field">
+                <label>Within ICT?</label>
+                <select id="callWithinICT" onchange="updateCallAssignTo()">
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                </select>
+            </div>
+            <div id="callHint" class="info-hint"></div>
+            <div class="field">
+                <label>Assign To</label>
+                <select id="callAssignTo"></select>
+            </div>
+            <div class="field">
+                <label>Remarks (optional)</label>
+                <textarea id="callRemarks" placeholder="Additional notes about this movement"></textarea>
+            </div>
+            <button class="btn-primary" id="confirmCallBtn" onclick="confirmCall()">✅ Confirm Assignment</button>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="close-modal" onclick="closeHistoryModal()">&times;</button>
+            <h2 style="font-size:16px;">📜 Document History</h2>
+            <div style="font-size:13px;background:#f7fbf9;padding:6px 12px;border-radius:6px;margin-bottom:8px;">
+                <strong>Ref:</strong> <span id="histRef"></span> &nbsp;|&nbsp; <strong>Subject:</strong> <span id="histSubject"></span>
+            </div>
+            <div id="historyList" style="margin-top:6px;"></div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- SECTION 7 : JAVASCRIPT                                   -->
+    <!-- ========================================================= -->
+    <script>
+    // =============================================================
+    // PWA SETUP
+    // =============================================================
+    (function setupPWA() {
+        const manifest = {
+            name: "ICT Office Document Register",
+            short_name: "ICT Register",
+            description: "Incoming & Outgoing Document Tracker for the ICT Office",
+            start_url: ".",
+            scope: ".",
+            display: "standalone",
+            orientation: "any",
+            background_color: "#0b6e4f",
+            theme_color: "#0b6e4f",
+            categories: ["business", "productivity"],
+            icons: [
+                {
+                    src: "data:image/svg+xml," + encodeURIComponent(
+                        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>" +
+                        "<rect width='512' height='512' rx='96' fill='#0b6e4f'/>" +
+                        "<path d='M140 256 L220 336 L372 176' stroke='white' stroke-width='48' " +
+                        "fill='none' stroke-linecap='round' stroke-linejoin='round'/>" +
+                        "</svg>"
+                    ),
+                    sizes: "512x512", type: "image/svg+xml", purpose: "any"
+                },
+                {
+                    src: "data:image/svg+xml," + encodeURIComponent(
+                        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'>" +
+                        "<rect width='192' height='192' rx='36' fill='#0b6e4f'/>" +
+                        "<path d='M52 96 L82 126 L140 66' stroke='white' stroke-width='18' " +
+                        "fill='none' stroke-linecap='round' stroke-linejoin='round'/>" +
+                        "</svg>"
+                    ),
+                    sizes: "192x192", type: "image/svg+xml", purpose: "any"
+                },
+                {
+                    src: "data:image/svg+xml," + encodeURIComponent(
+                        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>" +
+                        "<rect width='512' height='512' fill='#0b6e4f'/>" +
+                        "<path d='M140 256 L220 336 L372 176' stroke='white' stroke-width='48' " +
+                        "fill='none' stroke-linecap='round' stroke-linejoin='round'/>" +
+                        "</svg>"
+                    ),
+                    sizes: "512x512", type: "image/svg+xml", purpose: "maskable"
+                }
+            ]
+        };
+
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+        document.getElementById("pwa-manifest").setAttribute("href", URL.createObjectURL(manifestBlob));
+
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                self.addEventListener('install', e => self.skipWaiting());
+                self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+                self.addEventListener('fetch', e => {
+                    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+                });
+            `;
+            const swBlob = new Blob([swCode], { type: 'application/javascript' });
+            navigator.serviceWorker.register(URL.createObjectURL(swBlob))
+                .then(() => console.log('✅ SW registered'))
+                .catch(err => console.log('⚠️ SW skipped:', err.message));
+        }
+    })();
+
+    // =============================================================
+    // INSTALL PROMPT
+    // =============================================================
+    let deferredInstallPrompt = null;
+    const INSTALL_DISMISSED_KEY = 'ict_install_dismissed_v1';
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        showInstallUI();
+    });
+
+    window.addEventListener('appinstalled', () => {
+        deferredInstallPrompt = null;
+        hideInstallUI();
+        localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
+    });
+
+    function showInstallUI() {
+        document.getElementById('installBtnHeader')?.classList.add('visible');
+        if (localStorage.getItem(INSTALL_DISMISSED_KEY) !== 'true') {
+            document.getElementById('installBanner')?.classList.add('visible');
+        }
+    }
+
+    function hideInstallUI() {
+        document.getElementById('installBtnHeader')?.classList.remove('visible');
+        document.getElementById('installBanner')?.classList.remove('visible');
+    }
+
+    function dismissInstall() {
+        localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
+        document.getElementById('installBanner')?.classList.remove('visible');
+    }
+
+    async function triggerInstall() {
+        const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                          || window.navigator.standalone === true;
+
+        if (isStandalone) {
+            alert('✅ ICT Register is already installed. Open it from your home screen.');
+            return;
+        }
+
+        if (deferredInstallPrompt) {
+            deferredInstallPrompt.prompt();
+            const choice = await deferredInstallPrompt.userChoice;
+            if (choice.outcome === 'accepted') {
+                hideInstallUI();
+                localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
+            }
+            deferredInstallPrompt = null;
+            return;
+        }
+
+        if (isIOS) {
+            document.getElementById('iosInstallModal').classList.add('active');
+            return;
+        }
+
+        alert(
+            '📲 How to install ICT Register:\n\n' +
+            '1. Look at the address bar (top-right of your browser)\n' +
+            '2. Click the small "Install" icon (a monitor with a down arrow, or a plus icon)\n' +
+            '3. Confirm the installation\n\n' +
+            'If you don\'t see the icon, use your browser menu (⋮ or ⋯) → "Install App" or "Add to Home Screen".'
+        );
+    }
+
+    function closeIOSModal() {
+        document.getElementById('iosInstallModal').classList.remove('active');
+        localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
+        hideInstallUI();
+    }
+
+    // =============================================================
+    // SUPABASE CONFIGURATION
+    // =============================================================
+    const SUPABASE_URL = 'https://cbyynfggmaahxmmyqswf.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_Jf_2MYTkJW-RaB_PTXnDvg_xVPg25fY';
+
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // =============================================================
+    // GLOBAL STATE
+    // =============================================================
+    let currentUser = null;
+    let documents = [];
+    let editIndex = null;
+    let currentPage = 1;
+    const PAGE_SIZE = 10;
+    let filteredData = [];
+    let statusFilter = 'all';
+    let realtimeChannel = null;
+
+    let dateFilterFrom = null;
+    let dateFilterTo = null;
+    let activePresetName = 'All Time';
+    let officeFilterValue = 'all';
+
+    let sessionTimerInterval = null;
+    let sessionTimeLeft = 300;
+    const SESSION_TIMEOUT = 300;
+
+    // Officer lists
+    const ictOfficers = [
+        'Director ICT',
+        'AD Operations', 'AD IT Support', 'AD EA', 'AD IT Serv', 'AD Budget',
+        'PM Hauwa', 'PM Malami', 'SM Ismail', 'SM DB1', 'SM DB2',
+        'SM Security', 'SM Operations', 'M Bakori', 'AM Operations',
+        'Oasis'
+    ];
+    const externalOfficers = [
+        'RG', 'Dir. BN', 'Dir. HR', 'Dir. IT', 'Dir. F&A', 'Dir. NSOD',
+        'Dir. Budget', 'Dir. Audit', 'Head Compliance', 'Head Registry',
+        'Head Gen. Service', 'Head Com. Sec', 'Head RMD', 'Head CS',
+        'Head PR', 'Head Status Desk', 'Head SPU',
+        'SA1 (Iywa)', 'SA2 (Justin)', 'Head Innovation Unit (MA)',
+        'Oasis'
+    ];
+
+    const $ = id => document.getElementById(id);
+
+    // =============================================================
+    // SESSION TIMER
+    // =============================================================
+    function resetSessionTimer() {
+        sessionTimeLeft = SESSION_TIMEOUT;
+        updateTimerDisplay();
+        clearInterval(sessionTimerInterval);
+        sessionTimerInterval = setInterval(tickSessionTimer, 1000);
+    }
+
+    function tickSessionTimer() {
+        sessionTimeLeft--;
+        updateTimerDisplay();
+        if (sessionTimeLeft <= 0) {
+            clearInterval(sessionTimerInterval);
+            handleLogout(true);
+        }
+    }
+
+    function updateTimerDisplay() {
+        const mins = Math.floor(sessionTimeLeft / 60);
+        const secs = sessionTimeLeft % 60;
+        const timerEl = $('sessionTimer');
+        if (timerEl) {
+            timerEl.textContent = `⏱ ${mins}:${secs.toString().padStart(2, '0')}`;
+            if (sessionTimeLeft <= 30) timerEl.classList.add('warning');
+            else timerEl.classList.remove('warning');
+        }
+    }
+
+    function resetSessionOnActivity() {
+        if ($('appContainer').classList.contains('visible')) resetSessionTimer();
+    }
+
+    document.addEventListener('click', resetSessionOnActivity);
+    document.addEventListener('keydown', resetSessionOnActivity);
+    document.addEventListener('mousemove', resetSessionOnActivity);
+    document.addEventListener('scroll', resetSessionOnActivity);
+
+    // =============================================================
+    // AUTHENTICATION
+    // =============================================================
+    async function handleLogin() {
+        const email = $('loginEmail').value.trim();
+        const password = $('loginPassword').value;
+        const errorEl = $('loginError');
+        const btn = $('loginBtn');
+
+        errorEl.textContent = '';
+        if (!email || !password) {
+            errorEl.textContent = '⚠️ Please enter both email and password.';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '🔄 Signing in...';
+
+        try {
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+
+            const { data: profile, error: profError } = await sb
+                .from('user_profiles')
+                .select('*')
+                .eq('id', data.user.id)
+                .maybeSingle();
+
+            if (profError) throw profError;
+
+            if (!profile) {
+                await sb.auth.signOut();
+                throw new Error('Your account exists but has no profile. Please contact the administrator to add you to the user list.');
+            }
+
+            currentUser = {
+                id: data.user.id,
+                email: data.user.email,
+                username: profile.username,
+                role: profile.role || 'user'
+            };
+
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            await onLoginSuccess();
+
+        } catch (err) {
+            console.error('Login error:', err);
+            let msg = err.message || 'Login failed.';
+            if (msg.includes('Invalid login credentials')) msg = '❌ Invalid email or password.';
+            errorEl.textContent = msg;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🔑 Sign In';
+        }
+    }
+
+    // Enter key on the email field triggers login too
+    document.addEventListener('DOMContentLoaded', () => {
+        const emailInput = $('loginEmail');
+        if (emailInput) {
+            emailInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleLogin();
+                }
+            });
+        }
+    });
+
+    async function onLoginSuccess() {
+        $('currentUserDisplay').textContent = `${currentUser.username} (${currentUser.role})`;
+        $('authOverlay').classList.add('hidden');
+        $('appContainer').classList.add('visible');
+        $('syncIndicator').style.display = 'flex';
+
+        if (currentUser.role === 'admin') {
+            $('userManagementTab').style.display = 'inline-block';
+        } else {
+            $('userManagementTab').style.display = 'none';
+        }
+
+        resetSessionTimer();
+        await loadDocuments();
+        await loadUsersList();
+        setupRealtime();
+        initFormDefaults();
+        initDateFilterDefaults();
+        populateOfficeFilter();
+
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            hideInstallUI();
+        } else if (deferredInstallPrompt) {
+            showInstallUI();
+        }
+    }
+
+    async function handleLogout(silent) {
+        clearInterval(sessionTimerInterval);
+        if (!silent) {
+            if (!confirm('Are you sure you want to logout?')) {
+                resetSessionTimer();
+                return;
+            }
+        }
+
+        try {
+            if (realtimeChannel) {
+                await sb.removeChannel(realtimeChannel);
+                realtimeChannel = null;
+            }
+            await sb.auth.signOut();
+        } catch (err) { console.error('Logout error:', err); }
+
+        localStorage.removeItem('currentUser');
+        currentUser = null;
+        documents = [];
+        $('appContainer').classList.remove('visible');
+        $('authOverlay').classList.remove('hidden');
+        $('loginPassword').value = '';
+        $('loginError').textContent = '';
+        $('userManagementTab').style.display = 'none';
+        $('syncIndicator').style.display = 'none';
+        switchTab('dashboard');
+    }
+
+    async function checkSession() {
+        try {
+            const { data: { session } } = await sb.auth.getSession();
+            if (session) {
+                const { data: profile, error } = await sb
+                    .from('user_profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .maybeSingle();
+
+                if (!error && profile) {
+                    currentUser = {
+                        id: session.user.id,
+                        email: session.user.email,
+                        username: profile.username,
+                        role: profile.role || 'user'
+                    };
+                    await onLoginSuccess();
+                    return true;
+                }
+
+                if (!profile) {
+                    console.warn('Session exists but no profile found. Signing out.');
+                    await sb.auth.signOut();
+                }
+            }
+        } catch (err) { console.error('Session check error:', err); }
+        return false;
+    }
+
+    // =============================================================
+    // DOCUMENTS
+    // =============================================================
+    async function loadDocuments() {
+        setSyncStatus('syncing');
+        try {
+            const { data, error } = await sb
+                .from('documents')
+                .select('*')
+                .order('serial', { ascending: false });
+
+            if (error) throw error;
+            documents = (data || []).map((r, i) => ({
+                id: r.id,
+                serial: r.serial || (data.length - i),
+                ref: r.ref,
+                subject: r.subject,
+                from: r.from_party,
+                to: r.to_party,
+                withinICT: r.within_ict,
+                date: r.date,
+                time: r.time,
+                timestamp: r.timestamp,
+                remarks: r.remarks,
+                status: r.status,
+                history: r.history || [],
+                returnCount: r.return_count || 0,
+                createdBy: r.created_by,
+                lastModifiedBy: r.last_modified_by,
+                _dbId: r.id
+            }));
+
+            render();
+            setSyncStatus('online');
+        } catch (err) {
+            console.error('Load error:', err);
+            setSyncStatus('offline');
+        }
+    }
+
+    function setupRealtime() {
+        try {
+            if (realtimeChannel) sb.removeChannel(realtimeChannel);
+            realtimeChannel = sb
+                .channel('documents-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'documents' }, payload => {
+                    console.log('Realtime change:', payload);
+                    loadDocuments();
+                })
+                .subscribe();
+        } catch (err) { console.error('Realtime setup error:', err); }
+    }
+
+    function setSyncStatus(status) {
+        const ind = $('syncIndicator');
+        const text = $('syncText');
+        ind.classList.remove('offline', 'syncing');
+        if (status === 'online') text.textContent = 'Cloud Connected';
+        else if (status === 'syncing') { text.textContent = 'Syncing...'; ind.classList.add('syncing'); }
+        else { text.textContent = 'Offline'; ind.classList.add('offline'); }
+    }
+
+    // =============================================================
+    // USER LIST
+    // =============================================================
+    async function loadUsersList() {
+        try {
+            const { data, error } = await sb.from('user_profiles').select('*').order('username', { ascending: true });
+            if (error) throw error;
+            renderUserList(data || []);
+        } catch (err) { console.error('User list error:', err); }
+    }
+
+    function renderUserList(users) {
+        const tbody = $('userListBody');
+        if (!users || users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999;padding:12px;">No users found</td></tr>';
+            return;
+        }
+        let html = '';
+        users.forEach(u => {
+            const isAdmin = u.role === 'admin';
+            html += `
+                <tr>
+                    <td><strong>${escapeHtml(u.username)}</strong></td>
+                    <td><span class="${isAdmin ? 'badge-admin' : 'badge-user'}">${isAdmin ? '👑 Admin' : 'User'}</span></td>
+                    <td>—</td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    }
+
+    // =============================================================
+    // OFFICE FILTER
+    // =============================================================
+    function populateOfficeFilter() {
+        const sel = $('officeFilter');
+        if (!sel) return;
+
+        const offices = new Set();
+        [...ictOfficers, ...externalOfficers].forEach(o => {
+            if (o !== 'Director ICT') offices.add(o);
+        });
+        documents.forEach(d => {
+            if (d.history && Array.isArray(d.history)) {
+                d.history.forEach(h => {
+                    if (h.to && h.to !== 'Director ICT') {
+                        offices.add(h.to);
+                    }
+                });
+            }
+        });
+
+        const sorted = Array.from(offices).sort();
+        let html = '<option value="all">All Offices / Units / Officers</option>';
+        sorted.forEach(o => {
+            html += `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`;
+        });
+        sel.innerHTML = html;
+
+        if (officeFilterValue !== 'all' && sorted.includes(officeFilterValue)) {
+            sel.value = officeFilterValue;
+        } else {
+            officeFilterValue = 'all';
+            sel.value = 'all';
+        }
+    }
+
+    function applyOfficeFilter() {
+        officeFilterValue = $('officeFilter').value;
+        updateFilterChip();
+        render();
+        updateReportFilterInfo();
+    }
+
+    function documentMatchesOffice(doc, office) {
+        if (office === 'all') return true;
+        if (!doc.history) return false;
+        return doc.history.some(h => h.to === office);
+    }
+
+    // =============================================================
+    // SAVE DOCUMENT
+    // =============================================================
+    async function handleSave(e) {
+        e.preventDefault();
+        const btn = $('saveBtn');
+
+        const subject = $('docSubject').value.trim();
+        const withinICT = $('docWithinICT').value;
+        const date = $('docDate').value;
+        const remarks = $('docRemarks').value.trim();
+
+        if (date) {
+            const today = new Date().toISOString().split('T')[0];
+            if (date > today) {
+                alert('⚠️ You cannot select a future date.');
+                return;
+            }
+        }
+
+        const rf = document.getElementById('docReceivedFrom');
+        const receivedFromVal = rf ? rf.value.trim() : '';
+
+        if (!subject) { alert('Please enter a subject.'); return; }
+        if (!date) { alert('Please select a date.'); return; }
+        if (!receivedFromVal) { alert('Please select a sender.'); return; }
+
+        btn.disabled = true;
+        btn.textContent = '🔄 Saving...';
+
+        try {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            const from = receivedFromVal;
+            const to = 'Director ICT';
+
+            const historyEntry = {
+                action: 'Received',
+                icon: '📥',
+                cssClass: 'action-received',
+                from: from,
+                to: to,
+                timestamp: date + ' ' + timeStr,
+                remarks: remarks || 'Document received from ' + from,
+                user: currentUser.username
+            };
+
+            if (editIndex !== null) {
+                const existing = documents[editIndex];
+                const updatedHistory = existing.history.map((h, i) => {
+                    if (i === 0) return { ...h, from: from, to: to, timestamp: date + ' ' + timeStr };
+                    return h;
+                });
+
+                const { error } = await sb
+                    .from('documents')
+                    .update({
+                        subject, from_party: from, to_party: to,
+                        within_ict: withinICT, date, remarks,
+                        history: updatedHistory,
+                        last_modified_by: currentUser.username,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', existing._dbId);
+
+                if (error) throw error;
+                editIndex = null;
+            } else {
+                const { count } = await sb.from('documents').select('*', { count: 'exact', head: true });
+                const nextSerial = (count || 0) + 1;
+                const year = new Date().getFullYear();
+                const ref = `DOC/${year}/${String(nextSerial).padStart(5, '0')}`;
+
+                const { error } = await sb
+                    .from('documents')
+                    .insert({
+                        serial: nextSerial, ref, subject,
+                        from_party: from, to_party: to,
+                        within_ict: withinICT, date, time: timeStr,
+                        timestamp: new Date().toISOString(),
+                        remarks, status: 'Pending',
+                        history: [historyEntry],
+                        return_count: 0,
+                        created_by: currentUser.username,
+                        last_modified_by: currentUser.username
+                    });
+
+                if (error) throw error;
+            }
+
+            resetForm();
+            await loadDocuments();
+            populateOfficeFilter();
+            alert(editIndex !== null ? '✅ Record updated!' : '✅ Record saved!');
+
+        } catch (err) {
+            console.error('Save error:', err);
+            alert('❌ Failed to save: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '💾 Save Record';
+        }
+    }
+
+    // =============================================================
+    // CALL DOCUMENT — NEW RULE
+    // =============================================================
+    // Rule: If the document is CURRENTLY outside ICT (with any external officer),
+    //       then it can ONLY be assigned to Director ICT.
+    //       After Director ICT receives it, normal assignments work.
+    // =============================================================
+    let callDocIndex = null;
+    let isReturningAction = false;
+
+    function openCallModal(index) {
+        const doc = documents[index];
+        if (!doc) return;
+        callDocIndex = index;
+
+        $('callDocRef').textContent = doc.ref;
+        $('callDocSubject').textContent = doc.subject;
+        $('callDocCurrentTo').textContent = doc.to || '—';
+        $('callRemarks').value = '';
+
+        const currentLocation = doc.to || '';
+        const isICT = ictOfficers.includes(currentLocation);
+        const isDirector = currentLocation === 'Director ICT';
+        const isOutside = externalOfficers.includes(currentLocation);
+
+        // =========================================================
+        // CORE RULE: If currently outside ICT → can only go to Director ICT
+        // =========================================================
+        const isCurrentlyOutsideICT = isOutside;
+
+        if (isCurrentlyOutsideICT) {
+            // LOCKED MODE — return to Director ICT only
+            isReturningAction = true;
+
+            const newReturnCount = (doc.returnCount || 0) + 1;
+            const ordinal = getOrdinal(newReturnCount);
+
+            $('returnNoticeTitle').textContent = `🔄 Returning to ICT — ${ordinal} Time`;
+            $('returnNoticeBody').textContent =
+                `This document is currently with "${currentLocation}" (outside ICT). ` +
+                `It must first be returned to Director ICT before it can be assigned elsewhere. ` +
+                `This will be the ${ordinal} return.`;
+            $('returnNotice').style.display = 'flex';
+
+            $('callHint').textContent = '🔒 Locked: Only Director ICT can receive this returning document.';
+            $('callHint').classList.add('return-hint');
+
+            // Force only Director ICT in the dropdown
+            const sel = $('callAssignTo');
+            sel.innerHTML = '';
+            const opt = document.createElement('option');
+            opt.value = 'Director ICT';
+            opt.textContent = 'Director ICT';
+            sel.appendChild(opt);
+            sel.value = 'Director ICT';
+            sel.disabled = true;
+
+            // Hide "Within ICT?" (irrelevant — it's going to Director)
+            $('callWithinICTContainer').style.display = 'none';
+
+            $('callModal').classList.add('active');
+            return;
+        }
+
+        // =========================================================
+        // NORMAL FLOW — document is currently with Director ICT or an ICT officer
+        // =========================================================
+        isReturningAction = false;
+        $('returnNotice').style.display = 'none';
+        $('callHint').classList.remove('return-hint');
+        $('callAssignTo').disabled = false;
+        $('callWithinICT').disabled = false;
+
+        if (isDirector) {
+            // Director can send anywhere
+            $('callWithinICTContainer').style.display = 'block';
+            $('callHint').textContent = '📌 Director can send to ICT or outside ICT.';
+            $('callWithinICT').value = 'No';
+            populateCallAssignTo('No');
+        } else if (isICT) {
+            // With an ICT officer (not Director) — can only go to ICT officers
+            $('callWithinICTContainer').style.display = 'none';
+            $('callHint').textContent = '🔒 Document is with ICT officer — can only assign to ICT officers.';
+            populateCallAssignTo('Yes');
+        }
+
+        $('callModal').classList.add('active');
+    }
+
+    function getOrdinal(n) {
+        const s = ['th','st','nd','rd'];
+        const v = n % 100;
+        return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    }
+
+    function closeCallModal() {
+        $('callModal').classList.remove('active');
+        callDocIndex = null;
+        isReturningAction = false;
+        $('returnNotice').style.display = 'none';
+        $('callAssignTo').disabled = false;
+        $('callWithinICT').disabled = false;
+    }
+
+    function populateCallAssignTo(within) {
+        const list = within === 'Yes' ? ictOfficers : externalOfficers;
+        const sel = $('callAssignTo');
+        sel.innerHTML = '';
+        list.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item;
+            opt.textContent = item;
+            sel.appendChild(opt);
+        });
+    }
+
+    function updateCallAssignTo() {
+        populateCallAssignTo($('callWithinICT').value);
+    }
+
+    function getHistoryAction(from, to) {
+        if (from === 'Director ICT' && externalOfficers.includes(to)) {
+            return { action: 'Send To', icon: '📤', cssClass: 'action-sendto' };
+        }
+        if (from === 'Director ICT' && to !== 'Director ICT') {
+            return { action: 'Assigned to', icon: '📤', cssClass: 'action-assigned' };
+        }
+        if (from !== 'Director ICT' && to === 'Director ICT') {
+            if (externalOfficers.includes(from)) {
+                return { action: 'Recalled to', icon: '🔄', cssClass: 'action-recalled' };
+            }
+            return { action: 'Sent back to', icon: '↩️', cssClass: 'action-sentback' };
+        }
+        if (from !== 'Director ICT' && to !== 'Director ICT') {
+            return { action: 'Reassigned to', icon: '🔄', cssClass: 'action-reassigned' };
+        }
+        return { action: 'Transferred to', icon: '➡️', cssClass: 'action-assigned' };
+    }
+
+    async function confirmCall() {
+        if (callDocIndex === null) return;
+        const assignTo = $('callAssignTo').value.trim();
+        const remarks = $('callRemarks').value.trim();
+        if (!assignTo) {
+            alert('Please select where the document is being assigned to.');
+            return;
+        }
+
+        const btn = $('confirmCallBtn');
+        btn.disabled = true;
+        btn.textContent = '🔄 Saving...';
+
+        try {
+            const doc = documents[callDocIndex];
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateStr = now.toISOString().slice(0, 10);
+            const from = doc.to || 'Unknown';
+            const to = assignTo;
+            const actionInfo = getHistoryAction(from, to);
+
+            let newReturnCount = doc.returnCount || 0;
+            let returnSuffix = '';
+
+            // If this is a return action (from outside → Director ICT), increment counter
+            if (isReturningAction && to === 'Director ICT') {
+                newReturnCount++;
+                const ordinal = getOrdinal(newReturnCount);
+                returnSuffix = ` (Returning for the ${ordinal} time)`;
+            }
+
+            const newEntry = {
+                action: actionInfo.action,
+                icon: actionInfo.icon,
+                cssClass: actionInfo.cssClass,
+                from, to,
+                timestamp: dateStr + ' ' + timeStr,
+                remarks: (remarks || `${actionInfo.action} from ${from} to ${to}`) + returnSuffix,
+                user: currentUser.username,
+                returnCount: newReturnCount
+            };
+
+            const updatedHistory = [...(doc.history || []), newEntry];
+            const newStatus = computeStatus(updatedHistory);
+
+            const { error } = await sb
+                .from('documents')
+                .update({
+                    from_party: from,
+                    to_party: to,
+                    date: dateStr,
+                    time: timeStr,
+                    status: newStatus,
+                    history: updatedHistory,
+                    return_count: newReturnCount,
+                    last_modified_by: currentUser.username,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', doc._dbId);
+
+            if (error) throw error;
+
+            closeCallModal();
+            await loadDocuments();
+            populateOfficeFilter();
+
+            if (isReturningAction) {
+                const ordinal = getOrdinal(newReturnCount);
+                alert(`✅ Document returned to Director ICT — Returning for the ${ordinal} time. You can now assign it to any officer.`);
+            } else {
+                alert('✅ Document ' + actionInfo.action.toLowerCase() + ' ' + to);
+            }
+
+        } catch (err) {
+            console.error('Call error:', err);
+            alert('❌ Failed: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '✅ Confirm Assignment';
+        }
+    }
+
+    // =============================================================
+    // STATUS COMPUTATION
+    // =============================================================
+    function computeStatus(history) {
+        if (!history || history.length === 0) return 'Pending';
+        const last = history[history.length - 1];
+
+        if (last.action === 'Received' && last.to === 'Director ICT') {
+            return 'Pending';
+        }
+        if (['Assigned to', 'Sent back to', 'Reassigned to', 'Recalled to'].includes(last.action)) {
+            if (ictOfficers.includes(last.to)) return 'Processing';
+        }
+        if (['Send To', 'Sent'].includes(last.action)) {
+            if (externalOfficers.includes(last.to) || last.to === 'Director ICT') return 'Processed';
+        }
+        return 'Processing';
+    }
+
+    function determineStatus(history) {
+        return computeStatus(history);
+    }
+
+    // =============================================================
+    // DATE / OFFICE FILTER
+    // =============================================================
+    function initDateFilterDefaults() {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        const todayStr = toYMD(today);
+
+        const fromEl = $('filterFromDate');
+        const toEl = $('filterToDate');
+        if (fromEl) { fromEl.value = toYMD(firstDay); fromEl.setAttribute('max', todayStr); }
+        if (toEl) { toEl.value = toYMD(lastDay); toEl.setAttribute('max', todayStr); }
+    }
+
+    function toYMD(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    function applyDatePreset() {
+        const preset = $('datePreset').value;
+        const today = new Date();
+        let from = null, to = null, label = 'All Time';
+
+        switch (preset) {
+            case 'all': from = null; to = null; label = 'All Time'; break;
+            case 'today': from = toYMD(today); to = toYMD(today); label = 'Today'; break;
+            case 'thisWeek': {
+                const dow = today.getDay();
+                const diffToMon = (dow === 0 ? -6 : 1 - dow);
+                const monday = new Date(today);
+                monday.setDate(today.getDate() + diffToMon);
+                const sunday = new Date(monday);
+                sunday.setDate(monday.getDate() + 6);
+                const cappedSunday = sunday > today ? today : sunday;
+                from = toYMD(monday); to = toYMD(cappedSunday); label = 'This Week';
+                break;
+            }
+            case 'thisMonth': {
+                const first = new Date(today.getFullYear(), today.getMonth(), 1);
+                from = toYMD(first); to = toYMD(today); label = 'This Month';
+                break;
+            }
+            case 'lastMonth': {
+                const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                const last = new Date(today.getFullYear(), today.getMonth(), 0);
+                from = toYMD(first); to = toYMD(last); label = 'Last Month';
+                break;
+            }
+            case 'thisQuarter': {
+                const q = Math.floor(today.getMonth() / 3);
+                const first = new Date(today.getFullYear(), q * 3, 1);
+                from = toYMD(first); to = toYMD(today);
+                label = 'Q' + (q + 1) + ' ' + today.getFullYear();
+                break;
+            }
+            case 'lastQuarter': {
+                const q = Math.floor(today.getMonth() / 3);
+                const prevQ = q === 0 ? 3 : q - 1;
+                const year = q === 0 ? today.getFullYear() - 1 : today.getFullYear();
+                const first = new Date(year, prevQ * 3, 1);
+                const last = new Date(year, prevQ * 3 + 3, 0);
+                from = toYMD(first); to = toYMD(last);
+                label = 'Q' + (prevQ + 1) + ' ' + year;
+                break;
+            }
+            case 'thisYear': {
+                const first = new Date(today.getFullYear(), 0, 1);
+                from = toYMD(first); to = toYMD(today); label = 'Year ' + today.getFullYear();
+                break;
+            }
+            case 'custom':
+                $('filterFromDate').focus();
+                return;
+        }
+
+        dateFilterFrom = from;
+        dateFilterTo = to;
+        activePresetName = label;
+
+        const todayStr = toYMD(today);
+        const fromEl = $('filterFromDate');
+        const toEl = $('filterToDate');
+        if (fromEl) { fromEl.value = from || ''; fromEl.setAttribute('max', todayStr); }
+        if (toEl) { toEl.value = to || ''; toEl.setAttribute('max', todayStr); }
+
+        updateFilterChip();
+        render();
+        updateReportFilterInfo();
+    }
+
+    function applyCustomDateFilter() {
+        const from = $('filterFromDate').value;
+        const to = $('filterToDate').value;
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        if (from && from > todayStr) {
+            alert('⚠️ From Date cannot be in the future.');
+            return;
+        }
+        if (to && to > todayStr) {
+            alert('⚠️ To Date cannot be in the future.');
+            return;
+        }
+        if (from && to && from > to) {
+            alert('⚠️ From Date cannot be after To Date.');
+            return;
+        }
+
+        if (!from && !to) {
+            dateFilterFrom = null;
+            dateFilterTo = null;
+            activePresetName = 'All Time';
+            $('datePreset').value = 'all';
+        } else {
+            dateFilterFrom = from || null;
+            dateFilterTo = to || null;
+            activePresetName = `Custom: ${from || '…'} → ${to || '…'}`;
+            $('datePreset').value = 'custom';
+        }
+
+        updateFilterChip();
+        render();
+        updateReportFilterInfo();
+    }
+
+    function clearAllFilters() {
+        dateFilterFrom = null;
+        dateFilterTo = null;
+        activePresetName = 'All Time';
+        officeFilterValue = 'all';
+        $('datePreset').value = 'all';
+        $('officeFilter').value = 'all';
+        initDateFilterDefaults();
+        updateFilterChip();
+        render();
+        updateReportFilterInfo();
+    }
+
+    function updateFilterChip() {
+        const chipContainer = $('activeFilterChip');
+        let html = '';
+
+        if (dateFilterFrom || dateFilterTo) {
+            const fromTxt = dateFilterFrom ? formatNiceDate(dateFilterFrom) : 'Beginning';
+            const toTxt = dateFilterTo ? formatNiceDate(dateFilterTo) : 'Today';
+            html += `
+                <span class="filter-chip">
+                    📅 ${escapeHtml(activePresetName)}: ${fromTxt} → ${toTxt}
+                    <button onclick="clearDateFilterOnly()" title="Clear date filter">×</button>
+                </span>
+            `;
+        }
+
+        if (officeFilterValue && officeFilterValue !== 'all') {
+            html += `
+                <span class="filter-chip office-chip">
+                    🏢 ${escapeHtml(officeFilterValue)}
+                    <button onclick="clearOfficeFilterOnly()" title="Clear office filter">×</button>
+                </span>
+            `;
+        }
+
+        chipContainer.innerHTML = html;
+    }
+
+    function clearDateFilterOnly() {
+        dateFilterFrom = null;
+        dateFilterTo = null;
+        activePresetName = 'All Time';
+        $('datePreset').value = 'all';
+        initDateFilterDefaults();
+        updateFilterChip();
+        render();
+        updateReportFilterInfo();
+    }
+
+    function clearOfficeFilterOnly() {
+        officeFilterValue = 'all';
+        $('officeFilter').value = 'all';
+        updateFilterChip();
+        render();
+        updateReportFilterInfo();
+    }
+
+    function formatNiceDate(ymd) {
+        if (!ymd) return '';
+        const [y, m, d] = ymd.split('-').map(Number);
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return `${d} ${months[m-1]} ${y}`;
+    }
+
+    function isWithinDateRange(docDate) {
+        if (!dateFilterFrom && !dateFilterTo) return true;
+        if (!docDate) return false;
+        if (dateFilterFrom && docDate < dateFilterFrom) return false;
+        if (dateFilterTo && docDate > dateFilterTo) return false;
+        return true;
+    }
+
+    function updateReportFilterInfo() {
+        const el = $('reportFilterInfo');
+        if (!el) return;
+
+        let filterLine = 'All Time';
+        if (dateFilterFrom || dateFilterTo) {
+            const f = dateFilterFrom ? formatNiceDate(dateFilterFrom) : 'Beginning';
+            const t = dateFilterTo ? formatNiceDate(dateFilterTo) : 'Today';
+            filterLine = `${activePresetName}: ${f} → ${t}`;
+        }
+
+        const officeLine = (officeFilterValue === 'all') ? 'All Offices' : officeFilterValue;
+
+        el.innerHTML = `
+            <strong>📅 Filter:</strong> ${escapeHtml(filterLine)}<br>
+            <strong>🏢 Office:</strong> ${escapeHtml(officeLine)}
+        `;
+    }
+
+    // =============================================================
+    // RENDER
+    // =============================================================
+    function render() {
+        filteredData = getFilteredData();
+        currentPage = 1;
+        renderPage();
+        updateStats();
+    }
+
+    function getFilteredData() {
+        const search = $('searchInput').value.trim().toLowerCase();
+        let data = [...documents];
+
+        if (search) {
+            data = data.filter(r =>
+                (r.subject || '').toLowerCase().includes(search) ||
+                (r.ref || '').toLowerCase().includes(search) ||
+                (r.from || '').toLowerCase().includes(search) ||
+                (r.to || '').toLowerCase().includes(search)
+            );
+        }
+
+        if (statusFilter !== 'all') {
+            data = data.filter(r => determineStatus(r.history) === statusFilter);
+        }
+
+        if (dateFilterFrom || dateFilterTo) {
+            data = data.filter(r => isWithinDateRange(r.date));
+        }
+
+        if (officeFilterValue !== 'all') {
+            data = data.filter(r => documentMatchesOffice(r, officeFilterValue));
+        }
+
+        data.sort((a, b) => (b.serial || 0) - (a.serial || 0));
+        return data;
+    }
+
+    function renderPage() {
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const end = Math.min(start + PAGE_SIZE, filteredData.length);
+        const pageData = filteredData.slice(start, end);
+        const total = filteredData.length;
+        const tableBody = $('tableBody');
+
+        if (pageData.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:#999;">No records found</td></tr>`;
+            $('rowCount').textContent = '0';
+            $('tableInfo').innerHTML = `Showing <strong>0</strong> records`;
+            renderPagination(0);
+            return;
+        }
+
+        let html = '';
+        pageData.forEach((r, idx) => {
+            const displaySerial = start + idx + 1;
+            const status = determineStatus(r.history);
+            const statusClass = status === 'Pending' ? 'badge-pending' :
+                                status === 'Processing' ? 'badge-processing' : 'badge-processed';
+            const realIndex = documents.indexOf(r);
+            const isAdmin = currentUser && currentUser.role === 'admin';
+            const returnCount = r.returnCount || 0;
+            const returnBadge = returnCount > 0
+                ? `<span class="badge badge-returned">🔄 Returned ${returnCount}×</span>`
+                : '';
+
+            html += `
+                <tr>
+                    <td>${displaySerial}</td>
+                    <td><strong>${escapeHtml(r.ref)}</strong></td>
+                    <td>${escapeHtml(r.subject)}</td>
+                    <td>${escapeHtml(r.from)}</td>
+                    <td>${escapeHtml(r.to)}</td>
+                    <td>${r.date || ''}<br><small style="color:#888;">${r.time || ''}</small></td>
+                    <td><span class="badge ${statusClass}">${status}</span>${returnBadge}</td>
+                    <td>
+                        <div class="action-cell">
+                            <button class="action-btn edit-btn" onclick="editRecord(${realIndex})" title="Edit">
+                                <span class="icon">✏</span> Edit
+                            </button>
+                            <button class="action-btn call-btn" onclick="openCallModal(${realIndex})" title="Assign or recall">
+                                <span class="icon">📞</span> Call
+                            </button>
+                            <button class="action-btn history-btn" onclick="openHistoryModal(${realIndex})" title="View history">
+                                <span class="icon">📜</span> Hist
+                            </button>
+                            ${isAdmin ? `<button class="action-btn delete-btn" onclick="deleteRecord(${realIndex})" title="Delete">
+                                <span class="icon">🗑</span> Del
+                            </button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        tableBody.innerHTML = html;
+        $('rowCount').textContent = total;
+        $('tableInfo').innerHTML = `Showing <strong>${pageData.length}</strong> of <strong>${total}</strong> records (newest first)`;
+        renderPagination(total);
+    }
+
+    function renderPagination(total) {
+        const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
+        const controls = $('paginationControls');
+        const prevBtn = $('prevPage');
+        const nextBtn = $('nextPage');
+        const pageNumbers = $('pageNumbers');
+
+        if (total <= PAGE_SIZE) { controls.style.display = 'none'; return; }
+        controls.style.display = 'flex';
+        prevBtn.disabled = currentPage <= 1;
+        nextBtn.disabled = currentPage >= totalPages;
+
+        let pagesHtml = '';
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) {
+                pagesHtml += `<button class="${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+        } else {
+            const pages = [];
+            if (currentPage <= 4) {
+                for (let i = 1; i <= 5; i++) pages.push(i);
+                pages.push('...', totalPages - 1, totalPages);
+            } else if (currentPage >= totalPages - 3) {
+                pages.push(1, 2, '...');
+                for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1, 2, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages - 1, totalPages);
+            }
+            pages.forEach(p => {
+                if (p === '...') pagesHtml += `<span style="padding:0 6px;color:#888;">…</span>`;
+                else pagesHtml += `<button class="${p === currentPage ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`;
+            });
+        }
+        pageNumbers.innerHTML = pagesHtml;
+    }
+
+    function changePage(delta) {
+        const totalPages = Math.ceil(filteredData.length / PAGE_SIZE) || 1;
+        let newPage = currentPage + delta;
+        if (newPage < 1) newPage = 1;
+        if (newPage > totalPages) newPage = totalPages;
+        if (newPage !== currentPage) { currentPage = newPage; renderPage(); }
+    }
+
+    function goToPage(page) { currentPage = page; renderPage(); }
+
+    function updateStats() {
+        const total = documents.length;
+        let pending = 0, processing = 0, processed = 0;
+        documents.forEach(d => {
+            const st = determineStatus(d.history);
+            if (st === 'Pending') pending++;
+            else if (st === 'Processing') processing++;
+            else if (st === 'Processed') processed++;
+        });
+        $('statTotal').textContent = total;
+        $('statPending').textContent = pending;
+        $('statProcessing').textContent = processing;
+        $('statProcessed').textContent = processed;
+    }
+
+    function filterByStatus(status) {
+        statusFilter = status;
+        render();
+    }
+
+    // =============================================================
+    // EDIT / DELETE
+    // =============================================================
+    function editRecord(index) {
+        const r = documents[index];
+        if (!r) return;
+        editIndex = index;
+        $('docSubject').value = r.subject;
+        $('docWithinICT').value = r.withinICT || 'No';
+        $('docDate').value = r.date || '';
+        $('docRemarks').value = r.remarks || '';
+        updateFields();
+
+        const rf = document.getElementById('docReceivedFrom');
+        if (rf) {
+            if (rf.tagName === 'SELECT') {
+                for (let i = 0; i < rf.options.length; i++) {
+                    if (rf.options[i].value === r.from) { rf.selectedIndex = i; break; }
+                }
+            } else { rf.value = r.from || ''; }
+        }
+        $('saveBtn').textContent = '✏️ Update Record';
+        document.querySelector('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    async function deleteRecord(index) {
+        if (!currentUser || currentUser.role !== 'admin') {
+            alert('❌ Only admin can delete records.');
+            return;
+        }
+        if (!confirm('Delete this record permanently?')) return;
+
+        try {
+            const doc = documents[index];
+            const { error } = await sb.from('documents').delete().eq('id', doc._dbId);
+            if (error) throw error;
+            await loadDocuments();
+            populateOfficeFilter();
+            alert('✅ Record deleted.');
+        } catch (err) { alert('❌ Failed to delete: ' + err.message); }
+    }
+
+    // =============================================================
+    // HISTORY MODAL
+    // =============================================================
+    function openHistoryModal(index) {
+        const doc = documents[index];
+        if (!doc) return;
+        $('histRef').textContent = doc.ref;
+        $('histSubject').textContent = doc.subject;
+        const list = $('historyList');
+        list.innerHTML = '';
+
+        if (doc.history && doc.history.length > 0) {
+            doc.history.forEach(ev => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                const badgeClass = ev.cssClass || 'action-received';
+                div.innerHTML = `
+                    <div>
+                        <span class="action-badge ${badgeClass}">${ev.icon || '📌'} ${ev.action}</span>
+                        from <strong>${escapeHtml(ev.from)}</strong> to <strong>${escapeHtml(ev.to)}</strong>
+                    </div>
+                    <div class="time">🕒 ${ev.timestamp}</div>
+                    ${ev.remarks ? `<div style="font-size:12px;color:#777;margin-top:2px;">💬 ${escapeHtml(ev.remarks)}</div>` : ''}
+                    ${ev.user ? `<div class="audit-info">👤 By: ${escapeHtml(ev.user)}</div>` : ''}
+                `;
+                list.appendChild(div);
+            });
+        } else {
+            list.innerHTML = '<p style="color:#999;text-align:center;padding:16px;">No history available.</p>';
+        }
+        $('historyModal').classList.add('active');
+    }
+
+    function closeHistoryModal() { $('historyModal').classList.remove('active'); }
+
+    // =============================================================
+    // FORM HELPERS
+    // =============================================================
+    function updateFields() {
+        const within = $('docWithinICT').value;
+        const list = within === 'Yes' ? ictOfficers : externalOfficers;
+        const container = $('receivedContainer');
+
+        if (container.querySelector('input')) {
+            const sel = document.createElement('select');
+            sel.id = 'docReceivedFrom';
+            sel.className = 'docReceivedFrom';
+            list.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item;
+                opt.textContent = item;
+                sel.appendChild(opt);
+            });
+            container.innerHTML = '';
+            container.appendChild(sel);
+        }
+    }
+
+    function resetForm() {
+        $('docSubject').value = '';
+        $('docWithinICT').value = 'No';
+        const today = new Date().toISOString().split('T')[0];
+        $('docDate').value = today;
+        $('docDate').setAttribute('max', today);
+        $('docRemarks').value = '';
+        editIndex = null;
+        updateFields();
+        $('saveBtn').textContent = '💾 Save Record';
+    }
+
+    function initFormDefaults() {
+        const today = new Date().toISOString().split('T')[0];
+        $('docDate').value = today;
+        $('docDate').setAttribute('max', today);
+        updateFields();
+    }
+
+    // =============================================================
+    // TAB SWITCHING
+    // =============================================================
+    function switchTab(tab) {
+        const dashboardTab = $('dashboardTab');
+        const userTab = $('userManagementTab');
+        const dashboardContent = $('dashboardContent');
+        const userContent = $('userManagementContent');
+
+        if (tab === 'dashboard') {
+            dashboardContent.style.display = 'block';
+            userContent.style.display = 'none';
+            dashboardTab.classList.add('active');
+            userTab.classList.remove('active');
+        } else if (tab === 'users') {
+            dashboardContent.style.display = 'none';
+            userContent.style.display = 'block';
+            userTab.classList.add('active');
+            dashboardTab.classList.remove('active');
+            loadUsersList();
+        }
+    }
+
+    // =============================================================
+    // REPORTS
+    // =============================================================
+    function openReportMenu() {
+        updateReportFilterInfo();
+        $('reportBox').style.display = 'flex';
+    }
+    function closeReportMenu() { $('reportBox').style.display = 'none'; }
+
+    function generateReport() {
+        const reportData = getFilteredData();
+        if (reportData.length === 0) { alert('No records match the current filter.'); return; }
+
+        const total = reportData.length;
+        const pending = reportData.filter(d => determineStatus(d.history) === 'Pending').length;
+        const processing = reportData.filter(d => determineStatus(d.history) === 'Processing').length;
+        const processed = reportData.filter(d => determineStatus(d.history) === 'Processed').length;
+
+        let filterLine = 'All Time';
+        if (dateFilterFrom || dateFilterTo) {
+            const f = dateFilterFrom ? formatNiceDate(dateFilterFrom) : 'Beginning';
+            const t = dateFilterTo ? formatNiceDate(dateFilterTo) : 'Today';
+            filterLine = `${activePresetName}: ${f} → ${t}`;
+        }
+
+        const officeLine = (officeFilterValue === 'all') ? 'All Offices / Units / Officers' : officeFilterValue;
+
+        let rows = '';
+        const sorted = [...reportData].sort((a, b) => b.serial - a.serial);
+        sorted.forEach(r => {
+            const status = determineStatus(r.history);
+            const statusClass = status === 'Pending' ? 'badge-pending' :
+                                status === 'Processing' ? 'badge-processing' : 'badge-processed';
+            const returnCount = r.returnCount || 0;
+            const returnBadge = returnCount > 0 ? ` <span class="badge badge-returned">Returned ${returnCount}×</span>` : '';
+            rows += `
+                <tr>
+                    <td>${r.serial}</td>
+                    <td>${escapeHtml(r.ref)}</td>
+                    <td>${escapeHtml(r.subject)}</td>
+                    <td>${escapeHtml(r.from)}</td>
+                    <td>${escapeHtml(r.to)}</td>
+                    <td>${r.date || ''}<br><small>${r.time || ''}</small></td>
+                    <td><span class="badge ${statusClass}">${status}</span>${returnBadge}</td>
+                    <td class="signature-cell"></td>
+                </tr>
+            `;
+        });
+
+        const html = `<!DOCTYPE html>
+        <html><head><meta charset="UTF-8"><title>ICT Register Report</title>
+        <style>
+            * { box-sizing: border-box; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; color: #222; }
+            .header { background: linear-gradient(135deg, #0b6e4f, #118a62); color: #fff; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+            .header h1 { margin: 0; font-size: 24px; }
+            .header p { margin: 6px 0 0; opacity: .95; font-size: 13px; }
+            .filter-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+            .filter-line { background: #eaf5f0; color: #0b6e4f; padding: 10px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; border-left: 4px solid #0b6e4f; }
+            .office-line { background: #f3e5f5; color: #6A1B9A; padding: 10px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; border-left: 4px solid #6A1B9A; }
+            .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+            .card { padding: 12px; border-radius: 8px; color: #fff; text-align: center; font-weight: 700; }
+            .teal { background: #0b6e4f; }
+            .blue { background: #1565C0; }
+            .orange { background: #FB8C00; }
+            .green { background: #2E7D32; }
+            table { width: 100%; border-collapse: collapse; background: #fff; font-size: 12px; }
+            th { background: #0b6e4f; color: #fff; padding: 10px; text-align: left; }
+            td { padding: 8px 10px; border: 1px solid #ddd; vertical-align: middle; }
+            tr:nth-child(even) { background: #f7f7f7; }
+            .badge { padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; color: #fff; display: inline-block; }
+            .badge-pending { background: #1565C0; }
+            .badge-processing { background: #FB8C00; }
+            .badge-processed { background: #2E7D32; }
+            .badge-returned { background: #6A1B9A; margin-left: 4px; }
+            .signature-cell {
+                height: 50px;
+                min-width: 160px;
+                width: 160px;
+                background-image: linear-gradient(to right, transparent 0%, transparent 10%, #999 10%, #999 90%, transparent 90%, transparent 100%);
+                background-repeat: no-repeat;
+                background-position: bottom 12px center;
+                background-size: 80% 1px;
+            }
+            th.signature-header {
+                width: 160px;
+                min-width: 160px;
+                text-align: center;
+            }
+            .print-btn { background: #0b6e4f; color: #fff; padding: 12px 30px; border: none; border-radius: 6px; cursor: pointer; margin-top: 20px; font-size: 14px; font-weight: 600; }
+            .print-btn:hover { background: #09553d; }
+            .footer-note { text-align: center; margin-top: 30px; font-size: 11px; color: #888; }
+            @media print {
+                .no-print { display: none; }
+                body { margin: 10px; }
+            }
+        </style></head><body>
+            <div class="header">
+                <h1>📂 ICT OFFICE DOCUMENT REGISTER</h1>
+                <p>Incoming &amp; Outgoing Register — Generated ${new Date().toLocaleString()}</p>
+            </div>
+
+            <div class="filter-panel">
+                <div class="filter-line">📅 Date Filter: ${escapeHtml(filterLine)}</div>
+                <div class="office-line">🏢 Office / Unit / Officer: ${escapeHtml(officeLine)}</div>
+            </div>
+
+            <div class="summary">
+                <div class="card teal">Total<br><br>${total}</div>
+                <div class="card blue">Pending<br><br>${pending}</div>
+                <div class="card orange">Processing<br><br>${processing}</div>
+                <div class="card green">Processed<br><br>${processed}</div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>S/N</th><th>Ref</th><th>Subject</th><th>From</th>
+                        <th>To</th><th>Date / Time</th><th>Status</th>
+                        <th class="signature-header">Signature</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+
+            <div class="footer-note">
+                ICT Department, Corporate Affairs Commission &nbsp;|&nbsp; Generated on ${new Date().toLocaleString()}
+            </div>
+
+            <div class="no-print" style="text-align:center;margin-top:20px;">
+                <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+            </div>
+        </body></html>`;
+
+        const win = window.open('', '_blank');
+        win.document.write(html);
+        win.document.close();
+    }
+
+    function exportExcel() {
+        const reportData = getFilteredData();
+        if (reportData.length === 0) { alert('No records match the current filter.'); return; }
+
+        let filterLine = 'All Time';
+        if (dateFilterFrom || dateFilterTo) {
+            const f = dateFilterFrom ? formatNiceDate(dateFilterFrom) : 'Beginning';
+            const t = dateFilterTo ? formatNiceDate(dateFilterTo) : 'Today';
+            filterLine = `${activePresetName}: ${f} → ${t}`;
+        }
+
+        const officeLine = (officeFilterValue === 'all') ? 'All Offices' : officeFilterValue;
+
+        const lines = [];
+        lines.push('"ICT OFFICE DOCUMENT REGISTER"');
+        lines.push(`"Date Filter","${filterLine}"`);
+        lines.push(`"Office Filter","${officeLine}"`);
+        lines.push(`"Generated","${new Date().toLocaleString()}"`);
+        lines.push('');
+        lines.push('"S/N","Reference","Subject","From","To","Date","Time","Status","Return Count","Signature"');
+        const sorted = [...reportData].sort((a, b) => b.serial - a.serial);
+        sorted.forEach(r => {
+            lines.push([
+                r.serial,
+                r.ref,
+                `"${(r.subject || '').replace(/"/g, '""')}"`,
+                `"${(r.from || '').replace(/"/g, '""')}"`,
+                `"${(r.to || '').replace(/"/g, '""')}"`,
+                r.date || '',
+                r.time || '',
+                determineStatus(r.history),
+                r.returnCount || 0,
+                '""'
+            ].join(','));
+        });
+
+        const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `ICT_Register_${new Date().toISOString().substring(0, 10)}.csv`;
+        link.click();
+    }
+
+    // =============================================================
+    // UTILITIES
+    // =============================================================
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // =============================================================
+    // EVENT LISTENERS
+    // =============================================================
+    document.getElementById('docForm').addEventListener('submit', handleSave);
+    $('docWithinICT').addEventListener('change', updateFields);
+    $('searchInput').addEventListener('input', () => { statusFilter = 'all'; render(); });
+    $('reportBox').addEventListener('click', function(e) { if (e.target === this) closeReportMenu(); });
+    $('callModal').addEventListener('click', function(e) { if (e.target === this) closeCallModal(); });
+    $('historyModal').addEventListener('click', function(e) { if (e.target === this) closeHistoryModal(); });
+    $('iosInstallModal').addEventListener('click', function(e) { if (e.target === this) closeIOSModal(); });
+
+    // =============================================================
+    // INITIALIZATION
+    // =============================================================
+    async function init() {
+        const hasSession = await checkSession();
+        setTimeout(() => {
+            $('loadingScreen').classList.add('hidden');
+            if (!hasSession) $('authOverlay').classList.remove('hidden');
+        }, 800);
+    }
+
+    sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT') { if (currentUser) handleLogout(true); }
+    });
+
+    init();
+
+    // Expose globally
+    window.handleLogin = handleLogin;
+    window.handleLogout = handleLogout;
+    window.switchTab = switchTab;
+    window.filterByStatus = filterByStatus;
+    window.changePage = changePage;
+    window.goToPage = goToPage;
+    window.editRecord = editRecord;
+    window.deleteRecord = deleteRecord;
+    window.openCallModal = openCallModal;
+    window.closeCallModal = closeCallModal;
+    window.confirmCall = confirmCall;
+    window.updateCallAssignTo = updateCallAssignTo;
+    window.openHistoryModal = openHistoryModal;
+    window.closeHistoryModal = closeHistoryModal;
+    window.openReportMenu = openReportMenu;
+    window.closeReportMenu = closeReportMenu;
+    window.generateReport = generateReport;
+    window.exportExcel = exportExcel;
+    window.resetSessionTimer = resetSessionTimer;
+    window.applyDatePreset = applyDatePreset;
+    window.applyCustomDateFilter = applyCustomDateFilter;
+    window.clearAllFilters = clearAllFilters;
+    window.clearDateFilterOnly = clearDateFilterOnly;
+    window.clearOfficeFilterOnly = clearOfficeFilterOnly;
+    window.applyOfficeFilter = applyOfficeFilter;
+    window.triggerInstall = triggerInstall;
+    window.dismissInstall = dismissInstall;
+    window.closeIOSModal = closeIOSModal;
+    </script>
+
+</body>
+</html>
