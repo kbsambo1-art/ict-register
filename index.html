@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ICT Register v3.6</title>
+    <title>ICT Register v3.7</title>
 
     <!-- ----- CUSTOM FAVICON ----- -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b6e4f'/%3E%3Cpath d='M18 32 L28 42 L48 22' stroke='white' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" type="image/svg+xml">
@@ -714,7 +714,7 @@
                 </div>
                 <div id="loginError" class="error-msg"></div>
                 <button class="btn-primary" id="loginBtn" onclick="handleLogin()">🔑 Sign In</button>
-                <div class="footer-note">ICT Office Document Register v3.6 (Cloud)</div>
+                <div class="footer-note">ICT Office Document Register v3.7 (Cloud)</div>
             </div>
         </div>
     </div>
@@ -1302,7 +1302,6 @@
         }
     }
 
-    // Enter key on the email field triggers login too
     document.addEventListener('DOMContentLoaded', () => {
         const emailInput = $('loginEmail');
         if (emailInput) {
@@ -1402,20 +1401,37 @@
     }
 
     // =============================================================
-    // DOCUMENTS
+    // DOCUMENTS — AUTO-PAGINATE to fetch ALL records
     // =============================================================
     async function loadDocuments() {
         setSyncStatus('syncing');
         try {
-            const { data, error } = await sb
-                .from('documents')
-                .select('*')
-                .order('serial', { ascending: false });
+            const PAGE_FETCH = 1000;
+            let allRows = [];
+            let from = 0;
+            let keepGoing = true;
 
-            if (error) throw error;
-            documents = (data || []).map((r, i) => ({
+            while (keepGoing) {
+                const { data, error } = await sb
+                    .from('documents')
+                    .select('*')
+                    .order('serial', { ascending: false })
+                    .range(from, from + PAGE_FETCH - 1);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    allRows = allRows.concat(data);
+                    from += PAGE_FETCH;
+                    if (data.length < PAGE_FETCH) keepGoing = false;
+                } else {
+                    keepGoing = false;
+                }
+            }
+
+            documents = allRows.map((r, i) => ({
                 id: r.id,
-                serial: r.serial || (data.length - i),
+                serial: r.serial || (allRows.length - i),
                 ref: r.ref,
                 subject: r.subject,
                 from: r.from_party,
@@ -1649,11 +1665,7 @@
     }
 
     // =============================================================
-    // CALL DOCUMENT — NEW RULE
-    // =============================================================
-    // Rule: If the document is CURRENTLY outside ICT (with any external officer),
-    //       then it can ONLY be assigned to Director ICT.
-    //       After Director ICT receives it, normal assignments work.
+    // CALL DOCUMENT — with strict return-to-Director rule
     // =============================================================
     let callDocIndex = null;
     let isReturningAction = false;
@@ -1673,13 +1685,9 @@
         const isDirector = currentLocation === 'Director ICT';
         const isOutside = externalOfficers.includes(currentLocation);
 
-        // =========================================================
-        // CORE RULE: If currently outside ICT → can only go to Director ICT
-        // =========================================================
-        const isCurrentlyOutsideICT = isOutside;
-
-        if (isCurrentlyOutsideICT) {
-            // LOCKED MODE — return to Director ICT only
+        // ---- CORE RULE ----
+        // If currently outside ICT → only Director ICT can receive it
+        if (isOutside) {
             isReturningAction = true;
 
             const newReturnCount = (doc.returnCount || 0) + 1;
@@ -1695,7 +1703,6 @@
             $('callHint').textContent = '🔒 Locked: Only Director ICT can receive this returning document.';
             $('callHint').classList.add('return-hint');
 
-            // Force only Director ICT in the dropdown
             const sel = $('callAssignTo');
             sel.innerHTML = '';
             const opt = document.createElement('option');
@@ -1705,16 +1712,13 @@
             sel.value = 'Director ICT';
             sel.disabled = true;
 
-            // Hide "Within ICT?" (irrelevant — it's going to Director)
             $('callWithinICTContainer').style.display = 'none';
 
             $('callModal').classList.add('active');
             return;
         }
 
-        // =========================================================
-        // NORMAL FLOW — document is currently with Director ICT or an ICT officer
-        // =========================================================
+        // Normal flow
         isReturningAction = false;
         $('returnNotice').style.display = 'none';
         $('callHint').classList.remove('return-hint');
@@ -1722,13 +1726,11 @@
         $('callWithinICT').disabled = false;
 
         if (isDirector) {
-            // Director can send anywhere
             $('callWithinICTContainer').style.display = 'block';
             $('callHint').textContent = '📌 Director can send to ICT or outside ICT.';
             $('callWithinICT').value = 'No';
             populateCallAssignTo('No');
         } else if (isICT) {
-            // With an ICT officer (not Director) — can only go to ICT officers
             $('callWithinICTContainer').style.display = 'none';
             $('callHint').textContent = '🔒 Document is with ICT officer — can only assign to ICT officers.';
             populateCallAssignTo('Yes');
@@ -1812,7 +1814,6 @@
             let newReturnCount = doc.returnCount || 0;
             let returnSuffix = '';
 
-            // If this is a return action (from outside → Director ICT), increment counter
             if (isReturningAction && to === 'Director ICT') {
                 newReturnCount++;
                 const ordinal = getOrdinal(newReturnCount);
@@ -1831,7 +1832,7 @@
             };
 
             const updatedHistory = [...(doc.history || []), newEntry];
-            const newStatus = computeStatus(updatedHistory);
+            const newStatus = computeStatus(updatedHistory, doc.status);
 
             const { error } = await sb
                 .from('documents')
@@ -1871,10 +1872,21 @@
     }
 
     // =============================================================
-    // STATUS COMPUTATION
+    // STATUS COMPUTATION — now respects stored status for imported records
     // =============================================================
-    function computeStatus(history) {
-        if (!history || history.length === 0) return 'Pending';
+    function computeStatus(history, storedStatus) {
+        // If no history at all, use stored status
+        if (!history || history.length === 0) {
+            return storedStatus || 'Pending';
+        }
+
+        // If there is only 1 history entry (typical of imported records),
+        // prefer the stored status from the DB.
+        // New records created in the app will have 2+ entries after being called.
+        if (history.length <= 1 && storedStatus) {
+            return storedStatus;
+        }
+
         const last = history[history.length - 1];
 
         if (last.action === 'Received' && last.to === 'Director ICT') {
@@ -1889,8 +1901,8 @@
         return 'Processing';
     }
 
-    function determineStatus(history) {
-        return computeStatus(history);
+    function determineStatus(history, storedStatus) {
+        return computeStatus(history, storedStatus);
     }
 
     // =============================================================
@@ -2139,7 +2151,7 @@
         }
 
         if (statusFilter !== 'all') {
-            data = data.filter(r => determineStatus(r.history) === statusFilter);
+            data = data.filter(r => determineStatus(r.history, r.status) === statusFilter);
         }
 
         if (dateFilterFrom || dateFilterTo) {
@@ -2172,7 +2184,7 @@
         let html = '';
         pageData.forEach((r, idx) => {
             const displaySerial = start + idx + 1;
-            const status = determineStatus(r.history);
+            const status = determineStatus(r.history, r.status);
             const statusClass = status === 'Pending' ? 'badge-pending' :
                                 status === 'Processing' ? 'badge-processing' : 'badge-processed';
             const realIndex = documents.indexOf(r);
@@ -2267,7 +2279,7 @@
         const total = documents.length;
         let pending = 0, processing = 0, processed = 0;
         documents.forEach(d => {
-            const st = determineStatus(d.history);
+            const st = determineStatus(d.history, d.status);
             if (st === 'Pending') pending++;
             else if (st === 'Processing') processing++;
             else if (st === 'Processed') processed++;
@@ -2439,9 +2451,9 @@
         if (reportData.length === 0) { alert('No records match the current filter.'); return; }
 
         const total = reportData.length;
-        const pending = reportData.filter(d => determineStatus(d.history) === 'Pending').length;
-        const processing = reportData.filter(d => determineStatus(d.history) === 'Processing').length;
-        const processed = reportData.filter(d => determineStatus(d.history) === 'Processed').length;
+        const pending = reportData.filter(d => determineStatus(d.history, d.status) === 'Pending').length;
+        const processing = reportData.filter(d => determineStatus(d.history, d.status) === 'Processing').length;
+        const processed = reportData.filter(d => determineStatus(d.history, d.status) === 'Processed').length;
 
         let filterLine = 'All Time';
         if (dateFilterFrom || dateFilterTo) {
@@ -2455,7 +2467,7 @@
         let rows = '';
         const sorted = [...reportData].sort((a, b) => b.serial - a.serial);
         sorted.forEach(r => {
-            const status = determineStatus(r.history);
+            const status = determineStatus(r.history, r.status);
             const statusClass = status === 'Pending' ? 'badge-pending' :
                                 status === 'Processing' ? 'badge-processing' : 'badge-processed';
             const returnCount = r.returnCount || 0;
@@ -2594,7 +2606,7 @@
                 `"${(r.to || '').replace(/"/g, '""')}"`,
                 r.date || '',
                 r.time || '',
-                determineStatus(r.history),
+                determineStatus(r.history, r.status),
                 r.returnCount || 0,
                 '""'
             ].join(','));
